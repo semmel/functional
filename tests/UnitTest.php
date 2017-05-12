@@ -5,7 +5,7 @@ use Tarsana\Functional as F;
 /**
  * The parent class for unit tests.
  */
-abstract class UnitTest extends \PHPUnit_Framework_TestCase {
+abstract class UnitTest extends \PHPUnit\Framework\TestCase {
     /**
      * Checks all assertions.
      * @param  array $assertions [[expected1, value1], [expected2, value2], ...]

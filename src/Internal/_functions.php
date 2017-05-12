@@ -312,3 +312,13 @@ function _fill_placeholders($args, $fillers) {
     }
     return $args;
 }
+
+function _iterable_reduce(callable $reducer, $acc, \Iterator $iterator) {
+	$iterator->rewind();
+	while ($iterator->valid()) {
+		$acc = $reducer($acc, $iterator->current(), $iterator->key());
+		$iterator->next();
+	}
+	return $acc;
+}
+

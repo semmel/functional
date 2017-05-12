@@ -53,7 +53,10 @@ function chain() {
 }
 
 /**
- * Curried version of `array_filter` with modified order of arguments.
+ * Filter for non-associative collections.
+ * Takes a predicate and a collection, and returns a new collection of the same type containing the entries of the given collection whose members satisfy the given predicate.
+ * For arrays it is the curried version of `array_filter` with modified order of arguments.
+ *
  *
  * The callback is the first argument then the list.
  * ```php
@@ -64,20 +67,120 @@ function chain() {
  * @stream
  * @signature (a -> Boolean) -> [a] -> [a]
  * @param  callable $fn
- * @param  array $list
- * @return array
+ * @param  array|\ArrayObject|\SplObjectStorage $list
+ * @return array|\ArrayObject|\SplObjectStorage|callable
  */
 function filter() {
     static $filter = false;
-    $filter = $filter ?: curry(function($fn, $list) {
-        $result = [];
-        foreach ($list as $item) {
-            if ($fn($item))
-                $result[] = $item;
-        }
-        return $result;
+    $filter = $filter ?: curry(function(callable $fn, $list) {
+    	$isArray = is_array($list);
+    	$isObjectStorage = $list instanceof \SplObjectStorage;
+
+    	$result = $isArray ? []
+		    : ($isObjectStorage ? new \SplObjectStorage()
+			    : new \ArrayObject());
+
+    	if ($isArray)
+	    {
+	    	foreach ($list as $item) {
+	            if ($fn($item))
+	                $result[] = $item;
+	        }
+	        return $result;
+	    }
+
+    	return _iterable_reduce(
+    		_make_filterer($isObjectStorage ?
+			    function(\ArrayAccess $xs, $value) {
+	                $xs->offsetSet($value);
+		        } :
+			    function(\ArrayObject $xs, $value) {
+	                $xs->append($value);
+			    },
+		        $fn
+		    ),
+		    $result,
+			    $isObjectStorage ? $list : $list->getIterator()
+	    );
     });
     return _apply($filter, func_get_args());
+}
+
+/**
+ * @internal generates a reducer function to filter via reduce
+ * @param callable $append appends a value or a key with a value to the collection
+ * @param callable $predicate the filter function
+ * @return \Closure
+ */
+function _make_filterer (callable $append, callable $predicate) {
+	return function ($acc, ...$entry) use ($append, $predicate) {
+		if ($predicate($entry[0])) {
+			$append($acc, ...$entry);
+		}
+		return $acc;
+	};
+}
+
+/**
+ * Filter for associative collections.
+ * Takes a predicate and a associative collection, and returns a new collection of the same type containing the entries of the given collection whose values or data satisfy the given predicate.
+ *
+ * ```php
+ * $o1 = new \StdClass;
+ * $o2 = new \StdClass;
+ * $o3 = new \StdClass;
+ * $hashMap = new \SplObjectStorage();
+ * $hashMap->attach($o1, 1);
+ * $hashMap->attach($o2, "two");
+ * $hashMap->attach($o3, [8, 9]);
+ * $numeric = F\filter_values('is_numeric');
+ * $numeric($hashMap);
+ * // =>
+ * // class SplObjectStorage#11 (1) {
+ * // array(1) {
+ * //   '000000004ce51120000000007bcbffc7' =>
+ * //    array(2) {
+ * //    'obj' =>
+ * //     class stdClass#6 (0) {...}
+ * //     'inf' =>
+ * //     int(1)
+ * //   }
+ * // }
+ * //}
+ * ```
+ *
+ * @signature (a -> Boolean) -> [a] -> [a]
+ * @param callable $predicate
+ * @param array|\ArrayObject|\SplObjectStorage $list
+ * @return array|\ArrayObject|\SplObjectStorage|callable
+ */
+function filter_values() {
+	static $filter_values = false;
+    $filter_values = $filter_values ?: curry(function(callable $predicate, $list) {
+    	$isArray = is_array($list);
+    	$isObjectStorage = $list instanceof \SplObjectStorage;
+
+	    $result = $isArray ? []
+		    : ($isObjectStorage ? new \SplObjectStorage()
+			    : new \ArrayObject());
+
+    	return _iterable_reduce(
+    		_make_filterer($isArray ?
+			    function(array &$xs, $value, $key) {
+	                $xs[$key] = $value;
+		        } :
+			    function(\ArrayAccess $xs, $value, $key) {
+	                $xs->offsetSet($key, $value);
+			    },
+		        $predicate
+		    ),
+		    $result,
+		    $isArray ? new \ArrayIterator($list)
+			    : ($isObjectStorage ? new _IteratorAdapter($list)
+			    : $list->getIterator())
+	    );
+    });
+    return _apply($filter_values, func_get_args());
 }
 
 /**

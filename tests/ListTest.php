@@ -18,6 +18,70 @@ class ListTest extends \Tarsana\UnitTests\Functional\UnitTest {
 		$list = [1, 'aa', 3, [4, 5]];
 		$numeric = F\filter('is_numeric');
 		$this->assertEquals([1, 3], $numeric($list));
+
+		$arrayObject = new \ArrayObject($list);
+		$numericArrayObject = $numeric($arrayObject);
+		$this->assertInstanceOf(\ArrayObject::class, $numericArrayObject,
+			"filter should return the same collection type");
+		$this->assertEquals([1, 3], $numericArrayObject->getArrayCopy());
+
+		$objectCollection = new \SplObjectStorage();
+		$o1 = (object)["id" => 1];
+		$o2 = (object)["id" => 'aa'];
+		$o3 = (object)["id" => 3];
+
+		$objectCollection->attach($o1);
+		$objectCollection->attach($o2);
+		$objectCollection->attach($o3);
+
+		$filterNumericObjects = F\filter(function(\StdClass $obj){
+			return is_numeric($obj->id);
+		});
+
+		$numericObjects = $filterNumericObjects($objectCollection);
+
+		$this->assertInstanceOf(\SplObjectStorage::class, $numericObjects,
+			"filter should return the same collection type");
+		$this->assertEquals(2, $numericObjects->count(),
+			"filter should run on the objects in SPLObjectStorage");
+		$this->assertTrue($numericObjects->contains($o1),
+			"filtered collection should contain objects from the given collection which pass the predicate.");
+		$this->assertTrue($numericObjects->contains($o3),
+			"filtered collection should contain objects from the given collection which pass the predicate.");
+
+	}
+
+	public function test_filter_values() {
+		$dictionary = ['a' => 1, 'b' => 'aa', 'c' => 3, 'd' => [4, 5], 'e' => new \StdClass, 99];
+		$numeric = F\filter_values('is_numeric');
+		$this->assertTrue(is_array($numeric($dictionary)),
+			"filter_values should return the same collection type");
+		$this->assertEquals(['a' => 1, 'c' => 3, 99], $numeric($dictionary),
+			"filter_values should run on the values in an associative array");
+
+		$o1 = new \StdClass;
+		$o2 = new \StdClass;
+		$o3 = new \StdClass;
+		$hashMap = new \SplObjectStorage();
+		$hashMap->attach($o1, 1);
+		$hashMap->attach($o2, "two");
+		$hashMap->attach($o3, [8, 9]);
+
+		$justWithNumericData = $numeric($hashMap);
+
+		$this->assertInstanceOf(\SplObjectStorage::class, $justWithNumericData,
+			"filter_values should return the same collection type");
+		$this->assertEquals(1, $justWithNumericData->count(),
+			"filter_values should run on the data in SPLObjectStorage");
+		$this->assertTrue($justWithNumericData->contains($o1),
+			"filter_values should run on the data in SPLObjectStorage");
+
+		$justNumericValues = $numeric(new \ArrayObject($dictionary));
+
+		$this->assertInstanceOf(\ArrayObject::class, $justNumericValues,
+			"filter_values should return the same collection type");
+		$this->assertEquals(['a' => 1, 'c' => 3, 99], $justNumericValues->getArrayCopy(),
+			"filter_values should run on the values of an associative ArrayObject");
 	}
 
 	public function test_reduce() {

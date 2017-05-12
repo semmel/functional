@@ -62,5 +62,22 @@ class FunctionsTest extends \Tarsana\UnitTests\Functional\UnitTest {
 		$newArgs = F\_merge_args($given, $args, 4);
 		$this->assertEquals((object) ['args' => [1, 2, 3, F\__()], 'placeholders' => 1], $newArgs);
 	}
+
+	public function test__iterable_reduce() {
+		$xs = [1, 2, 3];
+		$this->assertEquals(F\sum($xs),
+			F\_iterable_reduce('Tarsana\Functional\plus', 0, new \ArrayIterator($xs)));
+
+		$xs_assoc = [1 => "one", 2 => "two", 3 => "three"];
+		$this->assertEquals("1=>one,2=>two,3=>three,",
+			F\_iterable_reduce(
+				function ($acc, $value, $key) {
+					return $acc . "{$key}=>{$value},";
+				},
+				"",
+				new \ArrayIterator($xs_assoc)
+			)
+		);
+	}
 }
 

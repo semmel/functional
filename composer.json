@@ -17,6 +17,7 @@
         "files": [
           "src/Internal/_functions.php",
           "src/Internal/_stream.php",
+           "src/Internal/_IteratorAdapter.php",
           "src/functions.php",
           "src/operators.php",
           "src/common.php",
