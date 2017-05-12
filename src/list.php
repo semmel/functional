@@ -149,7 +149,7 @@ function _make_filterer (callable $append, callable $predicate) {
  * //}
  * ```
  *
- * @signature (a -> Boolean) -> [a] -> [a]
+ * @signature (a -> Boolean) -> {k: a} -> {k: a}
  * @param callable $predicate
  * @param array|\ArrayObject|\SplObjectStorage $list
  * @return array|\ArrayObject|\SplObjectStorage|callable
